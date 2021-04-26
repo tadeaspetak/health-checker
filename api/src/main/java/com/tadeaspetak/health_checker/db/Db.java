@@ -34,7 +34,7 @@ public class Db {
 
   private void initDb(Handler<AsyncResult<Void>> next) {
     pool
-      .query("CREATE TABLE services (id INTEGER PRIMARY KEY, name TEXT, url TEXT, user_id INTEGER, status TEXT)")
+      .query("CREATE TABLE services (id INTEGER PRIMARY KEY, url TEXT, status TEXT)")
       .execute()
       .onFailure(e -> next.handle(Future.failedFuture((e.getCause()))))
       .onSuccess(rows -> next.handle(Future.succeededFuture()));

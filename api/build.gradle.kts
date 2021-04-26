@@ -32,6 +32,7 @@ dependencies {
   implementation("com.google.code.gson:gson:2.8.6")
   implementation("io.github.willena:sqlite-jdbc:3.35.4")
   implementation("io.vertx:vertx-jdbc-client:$vertxVersion")
+  implementation("com.fasterxml.jackson.core:jackson-databind:2.12.0")
   implementation("io.reactiverse:reactiverse-junit5-web-client:$reactiverseVersion")
   implementation(platform("io.vertx:vertx-stack-depchain:$vertxVersion"))
   implementation("io.vertx:vertx-web")

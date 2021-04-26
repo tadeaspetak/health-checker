@@ -24,10 +24,10 @@ import static io.reactiverse.junit5.web.TestRequest.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TestMainVerticle {
   static int port = 8989;
-  static String dbPath = "test.com.tadeaspetak.health_checker.db";
+  static String dbPath = "test.db";
 
   DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject()
-    .put("com.tadeaspetak.health_checker.db.path", dbPath)
+    .put("db.path", dbPath)
     .put("http.port", port)
   );
 
@@ -61,13 +61,13 @@ public class TestMainVerticle {
       .onComplete(ar -> testContext.completeNow());
   }
 
-  final JsonObject newServiceInput = new JsonObject().put("name", "Amazon").put("url", "https://google.com");
-  final JsonObject newServiceOutput = newServiceInput.put("id", 1).put("user_id", 1).put("state", null);
+  final JsonObject newServiceInput = new JsonObject().put("url", "https://google.com");
+  final JsonObject newServiceOutput = newServiceInput.put("id", 1).put("status", "ok");
 
   @Test
   @Order(1)
   public void getServices(WebClient client, VertxTestContext testContext) {
-    testRequest(client.get("/services"))
+    testRequest(client.get("/api/services"))
       .expect(
         statusCode(200),
         jsonBodyResponse(new JsonObject().put("services", new JsonArray()))
@@ -80,14 +80,14 @@ public class TestMainVerticle {
   public void addService(WebClient client, VertxTestContext testContext) {
     final Checkpoint checkpoint = testContext.checkpoint(2);
 
-    testRequest(client.post("/services"))
+    testRequest(client.post("/api/services"))
       .expect(
         statusCode(202),
-        jsonBodyResponse(new JsonObject().put("message", "Added service.").put("id", 1))
+        jsonBodyResponse(new JsonObject().put("message", "Added service.").put("service", newServiceOutput))
       )
       .sendJson(newServiceInput, testContext, checkpoint)
       .onComplete(ar ->
-        testRequest(client.get("/services/1"))
+        testRequest(client.get("/api/services/1"))
           .expect(
             statusCode(200),
             jsonBodyResponse(newServiceOutput)
@@ -99,7 +99,7 @@ public class TestMainVerticle {
   @Test
   @Order(3)
   public void getServiceBadRequest(WebClient client, VertxTestContext testContext) {
-    testRequest(client.get("/services/bad"))
+    testRequest(client.get("/api/services/bad"))
       .expect(
         statusCode(400),
         jsonBodyResponse(new JsonObject().put("message", "`id` must be numeric."))
@@ -110,7 +110,7 @@ public class TestMainVerticle {
   @Test
   @Order(4)
   public void getServiceNonExisting(WebClient client, VertxTestContext testContext) {
-    testRequest(client.get("/services/2"))
+    testRequest(client.get("/api/services/2"))
       .expect(
         statusCode(404),
         jsonBodyResponse(new JsonObject().put("message", "Service 2 not found."))
@@ -121,7 +121,7 @@ public class TestMainVerticle {
   @Test
   @Order(5)
   public void getServices2(WebClient client, VertxTestContext testContext) {
-    testRequest(client.get("/services"))
+    testRequest(client.get("/api/services"))
       .expect(
         statusCode(200),
         jsonBodyResponse(new JsonObject().put("services", new JsonArray(Arrays.asList(newServiceOutput))))

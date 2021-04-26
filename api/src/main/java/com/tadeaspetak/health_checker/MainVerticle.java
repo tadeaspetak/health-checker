@@ -1,24 +1,20 @@
 package com.tadeaspetak.health_checker;
 
 import com.google.gson.Gson;
+import com.tadeaspetak.health_checker.api.Services;
+import com.tadeaspetak.health_checker.db.Db;
 import com.tadeaspetak.health_checker.models.Service;
-import com.tadeaspetak.health_checker.models.ServiceStatus;
 import io.vertx.core.*;
 import io.vertx.ext.web.Router;
 
-import com.tadeaspetak.health_checker.api.Services;
-import com.tadeaspetak.health_checker.db.Db;
-import io.vertx.ext.web.client.WebClient;
-
-import java.util.List;
 import java.util.stream.Collectors;
 
 public class MainVerticle extends AbstractVerticle {
   final Gson gson = new Gson();
 
-  Db db;
-  Timer timer;
-  WebClient webClient;
+  private Checker checker;
+  private Db db;
+  private Timer timer;
 
   @Override
   public void start(Promise<Void> startPromise) {
@@ -33,8 +29,13 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void run(Promise<Void> startPromise) {
+    this.checker = new Checker(vertx, db);
+
+    Router apiRouter = Router.router(vertx);
+    new Services(this.db, apiRouter, checker);
+
     Router router = Router.router(vertx);
-    new Services(this.db, router);
+    router.mountSubRouter("/api", apiRouter);
 
     vertx
       .createHttpServer()
@@ -44,45 +45,19 @@ public class MainVerticle extends AbstractVerticle {
       .onComplete(startPromise);
 
 
-    webClient = WebClient.create(vertx);
-
-    timer = new Timer(vertx, 5000, new Handler<>() {
-      @Override
-      public void handle(Long id) {
-        db.services.getAll(servicesAr -> {
-          if (servicesAr.succeeded()) {
-            List<Service> services = servicesAr.result().stream().map(o -> gson.fromJson(o.toString(), Service.class)).collect(Collectors.toList());
-            for (Service service : services) {
-              check(service.url, result -> {
-                if (result.succeeded()) {
-                  ServiceStatus status = result.result() ? ServiceStatus.OK : ServiceStatus.FAIL;
-                  db.services.updateStatus(service.id, status, ar -> {});
-                } else {
-                  db.services.updateStatus(service.id, ServiceStatus.FAIL, ar -> {});
-                }
-              });
-            }
-          } else {
-            System.out.println(servicesAr.cause().getMessage());
-          }
-        });
+    timer = new Timer(vertx, 5000, id -> db.services.getAll(servicesAr -> {
+      if (servicesAr.succeeded()) {
+        checker.checkAndUpdate(servicesAr.result().stream().map(o -> gson.fromJson(o.toString(), Service.class)).collect(Collectors.toList()));
+      } else {
+        System.out.println(servicesAr.cause().getMessage());
       }
-    });
+    }));
   }
 
-  public void check(String url, Handler<AsyncResult<Boolean>> next) {
-    webClient.getAbs(url)
-      .send()
-      .onSuccess(response -> {
-        if (response.statusCode() == 200) {
-          next.handle(Future.succeededFuture(true));
-        } else {
-          next.handle(Future.succeededFuture(false));
-        }
-      })
-      .onFailure(e -> {
-        next.handle(Future.failedFuture(e));
-      });
+  @Override
+  public void stop() throws Exception {
+    super.stop();
+    if (timer != null) timer.stop();
   }
 
   public static void main(String[] args) {
