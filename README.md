@@ -30,3 +30,5 @@ Have fun 🎉
 2. Instead of polling, use a socket, [most likely SockJS](https://vertx.io/blog/real-time-bidding-with-websockets-and-vert-x/).
 3. Add animations; [Framer-Motion](https://www.framer.com/motion/) is my go-to library.
 4. Make health checks cancellable to prevent pesky services that take a loooong time to respond from creating loose threads. Would love to discuss how this can be done in `vertx`.
+5. Generate TS types directly from Java, using something akin to [typescript-generator](https://github.com/vojtechhabarta/typescript-generator).
+6. Verify parsable request bodies and db query results using JSON schemas.
